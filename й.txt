@@ -1,0 +1,97 @@
+парсинг
+
+
+pain_parse = []
+for article in company:
+    href = url + article + "/blog"
+    profe = url + article + "/profile"
+    requests_href = requests.get(href)
+    soup = bs4.BeautifulSoup(requests_href.text)
+    paaaa = soup.find_all('article', {"class" : "tm-articles-list__item"})
+    for pain in paaaa:
+        names = pain.find("h2", {"class" :  "tm-title_h2"}).text
+        rating = pain.find("span", {"class" : ["tm-votes-meter__value"]}).text
+        date = pain.find("span", {"class" : "tm-article-datetime-published"}).text
+        article_href = pain.find("h2", {"class" : ["tm-title", "tm-title_h2"]}).find("a").get('href')
+        article_text = pain.find("h2", {"class" : ["tm-title", "tm-title_h2"]}).find("a").text
+
+        links_profile = requests.get(profe)
+        soup_profile = bs4.BeautifulSoup(links_profile.text)
+        company_branches = soup_profile.find("span", {"class" : "tm-company-profile__categories-wrapper"}).text
+        rate = soup_profile.find("span", {"class" : "tm-votes-lever__score-counter tm-votes-lever__score-counter tm-votes-lever__score-counter_rating"}).text
+        
+
+        requests_href = requests.get("https://habr.com" + article_href)
+        soup_dec = bs4.BeautifulSoup(requests_href.text)
+
+        description = soup_dec.find("div", {"class" : "article-formatted-body"}).text
+
+        pain_parse.append({
+            "names" : names,
+            "rating" : rating,
+            "company_branches" : company_branches,
+            "rate" :  rate,
+            "date" : date,
+            "article_href" : article_href,
+            "article_text" : article_text,
+            "description" : description,
+            "company_branches" : company_branches
+        })
+
+        print(article_href)
+
+выгрузка файлов
+
+temp_file = []
+for file in way_json:
+    if file.endswith('.json'):
+        try:
+            temp_file = pd.read_json(f"{way}/{file}")
+        except:
+            continue
+            temp_file.append(temp_file)
+
+деления колонок
+
+temp_file["day"] = temp_file["refs"].apply(lambda x:x[1]['day'])
+temp_file["month"] = temp_file["refs"].apply(lambda x:x[1]['month'])
+temp_file["time"] = temp_file["refs"].apply(lambda x:x[1]['time'])
+temp_file["rate"] = temp_file["refs"].apply(lambda x:x[2]['rate'])
+temp_file["views"] = temp_file["refs"].apply(lambda x:x[2]['views'])
+temp_file["description"] = temp_file["refs"].apply(lambda x:x[0])
+
+токенезация
+
+re_text = re_text.apply(lambda token: nltk.word_tokenize(token))
+
+import pymorphy2
+
+morph = pymorphy2.MorphAnalyzer()
+lemmatizer = nltk.WordNetLemmatizer()
+nltk.download("stopwords")
+from nltk.corpus import stopwords
+stop_words = stopwords.words("russian")
+filtered_tokens = []
+for stop in re_text:
+    if stop not in stop_words:
+            filtered_tokens.append(stop)
+end = []
+for text in re_text:
+        pain_word = []
+        for paiiin in text:
+            if paiiin not in stop_words:
+                pain_word.append(paiiin)
+        
+        end.append(pain_word)
+len(end)
+лемматизацию
+
+lemm_text = []
+for lem in end:
+    
+    text_end = []
+    for lem_end in lem:
+        text_end.append(morph.normal_forms(lem_end)[0])
+    lemm_text.append(text_end)
+
+temp_file["Ready_words"] = temp_file["Ready_words"].apply(lambda text : ' '.join(text))

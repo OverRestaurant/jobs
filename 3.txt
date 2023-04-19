@@ -1,0 +1,170 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.cluster import BisectingKMeans
+import numpy as np
+import re
+%matplotlib inline
+Дальше мы читаем данные
+
+datesets = pd.read_csv('pain3.csv')
+dataset_json = pd.read_json('Target.json')
+Дальше мы Target.json разбиваем на колонку Nominations чтоб работать с ним
+
+Nominations = dataset_json['Target'].apply(lambda x: x['Nominations'])
+так же мы его переменовали в Nominations для работы с ним
+
+Nominations = pd.DataFrame(np.repeat(Nominations,5))
+Nominations = Nominations.rename(columns={'Target' : 'Nominations'})
+dataset_json = pd.concat([ Nominations], axis=1)
+dataset_json
+Nominations
+0	Здоровье и медицина
+0	Здоровье и медицина
+0	Здоровье и медицина
+0	Здоровье и медицина
+0	Здоровье и медицина
+...	...
+21	Образование и Кадры
+21	Образование и Кадры
+21	Образование и Кадры
+21	Образование и Кадры
+21	Образование и Кадры
+110 rows × 1 columns
+
+ 
+Ну а дпльше мы уже готовый результат добавляем в основной датасет (datesets)
+
+datesets = dataset_json.join(datesets)
+datesets
+Nominations	абсолютно	автоматизация	автоматизированный	автоматизировать	автоматически	автоматический	автор	адрес	активно	...	эффект	эффективно	эффективность	эффективный	являться	явно	ядро	язык	язык программирование	яндекс
+0	Здоровье и медицина	0.045896	0.000000	0.000000	0.0	0.000000	0.000000	0.0	0.0	0.037486	...	0.04004	0.0	0.000000	0.0	0.052057	0.0	0.0	0.072743	0.0	0.0
+0	Здоровье и медицина	0.045896	0.000000	0.000000	0.0	0.000000	0.000000	0.0	0.0	0.037486	...	0.04004	0.0	0.000000	0.0	0.052057	0.0	0.0	0.072743	0.0	0.0
+0	Здоровье и медицина	0.045896	0.000000	0.000000	0.0	0.000000	0.000000	0.0	0.0	0.037486	...	0.04004	0.0	0.000000	0.0	0.052057	0.0	0.0	0.072743	0.0	0.0
+0	Здоровье и медицина	0.045896	0.000000	0.000000	0.0	0.000000	0.000000	0.0	0.0	0.037486	...	0.04004	0.0	0.000000	0.0	0.052057	0.0	0.0	0.072743	0.0	0.0
+0	Здоровье и медицина	0.045896	0.000000	0.000000	0.0	0.000000	0.000000	0.0	0.0	0.037486	...	0.04004	0.0	0.000000	0.0	0.052057	0.0	0.0	0.072743	0.0	0.0
+...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...
+21	Образование и Кадры	0.010194	0.009391	0.009975	0.0	0.032296	0.018434	0.0	0.0	0.024977	...	0.00000	0.0	0.027153	0.0	0.034687	0.0	0.0	0.012925	0.0	0.0
+21	Образование и Кадры	0.010194	0.009391	0.009975	0.0	0.032296	0.018434	0.0	0.0	0.024977	...	0.00000	0.0	0.027153	0.0	0.034687	0.0	0.0	0.012925	0.0	0.0
+21	Образование и Кадры	0.010194	0.009391	0.009975	0.0	0.032296	0.018434	0.0	0.0	0.024977	...	0.00000	0.0	0.027153	0.0	0.034687	0.0	0.0	0.012925	0.0	0.0
+21	Образование и Кадры	0.010194	0.009391	0.009975	0.0	0.032296	0.018434	0.0	0.0	0.024977	...	0.00000	0.0	0.027153	0.0	0.034687	0.0	0.0	0.012925	0.0	0.0
+21	Образование и Кадры	0.010194	0.009391	0.009975	0.0	0.032296	0.018434	0.0	0.0	0.024977	...	0.00000	0.0	0.027153	0.0	0.034687	0.0	0.0	0.012925	0.0	0.0
+110 rows × 1503 columns
+
+Для обучения модели я буду использовать:
+MultinomialNB - Многочленный классификатор наивного Байеса подходит для классификации с дискретными признаками (например, количеством слов для классификации текста). Для мультиномиального распределения обычно требуется целочисленное количество объектов. Однако на практике могут также работать дробные подсчеты, такие как tf-idf.
+
+ComplementNB - Дополняющий наивный байесовский классификатор был разработан для исправления “серьезных допущений”, сделанных стандартным многочленным наивным байесовским классификатором. Она особенно подходит для несбалансированных наборов данных.
+
+RandomForestClassifier - это метаоценщик, который соответствует ряду классификаторов дерева решений в различных подвыборках набора данных и использует усреднение для повышения точности прогнозирования и контроля над подгонкой.
+
+я взял именно их так как они хорошо будут работать с нашим датасетом
+
+Импортируем эти модели
+
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.naive_bayes import ComplementNB
+from sklearn.ensemble import RandomForestClassifier
+Так же для метрики я буду использовать:
+f1_score - Оценка F1 может быть интерпретирована как среднее гармоническое точности и отзыва, где оценка F1 достигает своего наилучшего значения при 1 и худшего значения при 0.
+accuracy_score - При классификации с несколькими метками эта функция вычисляет точность подмножества: набор меток, предсказанный для выборки, должен точно соответствовать соответствующему набору меток в y_true.
+from sklearn.metrics import f1_score, accuracy_score
+MultinomialNB
+
+обучения модели
+Для начало мы их разделим на тестувую и обучающию:
+Набор для обучения: используется для обучения модели.
+Тестовый набор: используется для получения объективной оценки производительности модели.
+
+x = datesets.drop('Nominations', axis=1)
+y = datesets['Nominations']
+
+
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=0, stratify=datesets['Nominations'])
+print(X_train.shape, X_test.shape)
+(77, 1502) (33, 1502)
+MultinomialNB
+MNB  = MultinomialNB().fit(X_train, y_train)
+f1_score(MNB.predict(X_test), y_test, average='weighted')
+1.0
+accuracy_score(MNB.predict(X_test), y_test,)
+1.0
+RandomForestClassifier
+RFC = RandomForestClassifier().fit(X_train, y_train)
+f1_score(RFC.predict(X_test), y_test, average='weighted')
+1.0
+accuracy_score(RFC.predict(X_test), y_test,)
+1.0
+ComplementNB
+CNB = ComplementNB().fit(X_train, y_train)
+f1_score(CNB.predict(X_test), y_test, average='weighted')
+1.0
+accuracy_score(CNB.predict(X_test), y_test)
+1.0
+Мы видим что у двух моделей одинаковые значения, будем выберать мнжду ними.
+Поэтому я выберу модель RandomForestClassifier как он более точен и использует для вычесления абсолютно все данные
+
+end
+3.2 Оптимизация модели
+from sklearn.datasets import load_iris
+from sklearn.feature_selection import SelectKBest, chi2
+datesets_drop = datesets.drop(columns='Nominations').sum().sort_values()
+x, y = load_iris(return_X_y=True)
+from sklearn.feature_selection import chi2
+from sklearn.feature_selection import SelectKBest
+select = SelectKBest(chi2, k=50)
+X_new = select.fit_transform(X_train, y_train)
+ 
+select.get_feature_names_out()
+array(['база данные', 'библиотека', 'бизнес', 'биржа',
+       'большой количество', 'ваш', 'видео', 'дизайн', 'дизайнер',
+       'задача', 'запись', 'запрос', 'защита', 'инструмент', 'интересно',
+       'клиентский', 'книга', 'коллега', 'команда', 'компания', 'мало',
+       'настройка', 'описание', 'передача', 'планирование', 'поток',
+       'приложение', 'проверка', 'протокол', 'процесс', 'репозиторий',
+       'рынок', 'свойство', 'смотреть', 'текст', 'тест', 'тестировщик',
+       'тестовый', 'товар', 'торговый', 'управление', 'устройство',
+       'фактор', 'чат', 'читать', 'чтение', 'экономить', 'экран',
+       'это сделать', 'язык'], dtype=object)
+import pickle 
+with open("kbest.pkl", "wb") as write_to:
+    pickle.dump(select, write_to)
+    
+with open("kbest.pkl", "rb") as read_from:
+    test = pickle.load(read_from)
+test.get_feature_names_out()
+array(['база данные', 'библиотека', 'бизнес', 'биржа',
+       'большой количество', 'ваш', 'видео', 'дизайн', 'дизайнер',
+       'задача', 'запись', 'запрос', 'защита', 'инструмент', 'интересно',
+       'клиентский', 'книга', 'коллега', 'команда', 'компания', 'мало',
+       'настройка', 'описание', 'передача', 'планирование', 'поток',
+       'приложение', 'проверка', 'протокол', 'процесс', 'репозиторий',
+       'рынок', 'свойство', 'смотреть', 'текст', 'тест', 'тестировщик',
+       'тестовый', 'товар', 'торговый', 'управление', 'устройство',
+       'фактор', 'чат', 'читать', 'чтение', 'экономить', 'экран',
+       'это сделать', 'язык'], dtype=object)
+from sklearn.decomposition import PCA
+pca = PCA().fit(X_new)
+test = pca.fit_transform(X_new)
+test
+
+from sklearn.model_selection import GridSearchCV
+parameters = {'n_estimators':[60, 80, 100], 'max_depth':[None, 1 , 10]}
+RFC = RandomForestClassifier()
+GSC = GridSearchCV(RFC, parameters).fit(X_train, y_train)
+datesets_GSC = pd.DataFrame(GSC.cv_results_)
+datesets_GSC
+from sklearn.model_selection import validation_curve
+from sklearn.datasets import load_iris
+from sklearn.linear_model import Ridge
+x_plot = datesets_GSC['params']
+y_plot = datesets_GSC['mean_test_score']
+test = [f"{x['max_depth']}-{x['n_estimators']}" for x in x_plot]
+plt.plot(test, y_plot)
+plt.xlabel('params')
+plt.ylabel('mean_test_score')
+plt.show()
